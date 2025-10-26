@@ -1,9 +1,9 @@
 import pandas as pd 
 from imblearn.over_sampling import SMOTE 
 
-input_train = pd.read_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\train\input_train.csv')
+input_train = pd.read_csv('/home/bruno/detection_alzhaimer/archive/train/input_train.csv')
 
-output_train = pd.read_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\train\output_train.csv')
+output_train = pd.read_csv('/home/bruno/detection_alzhaimer/archive/train/output_train.csv')
 
 original_columns = input_train.columns
 input_train_numeric = pd.get_dummies(input_train, drop_first=True)
@@ -13,5 +13,5 @@ input_train_balanced, output_train_balanced = sm.fit_resample(input_train_numeri
 
 print(output_train_balanced.value_counts())
 
-input_train_balanced.to_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\train\input_train_balanced.csv', index=False)
-output_train_balanced.to_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\train\output_train_balanced.csv', index=False)
+input_train_balanced.to_csv('/home/bruno/detection_alzhaimer/archive/train/input_train_balanced.csv', index=False)
+output_train_balanced.to_csv('/home/bruno/detection_alzhaimer/archive/train/output_train_balanced.csv', index=False)
