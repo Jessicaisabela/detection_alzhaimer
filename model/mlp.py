@@ -1,68 +1,105 @@
 import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import tensorflow as tf 
-from tensorflow.keras.callbacks import EarlyStopping 
-import matplotlib.pyplot as plt 
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
 
+print("Carregando dataset...")
+db = pd.read_csv('/home/bruno/detection_alzhaimer/archive/alzheimers_disease_data.csv')
 
-input_train_df = pd.read_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\train\input_train_balanced.csv')
-output_train_df = pd.read_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\train\output_train_balanced.csv')
+print("\nColunas do dataset:")
+print(db.columns)
 
-input_test_df = pd.read_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\test\input_test.csv')
-output_test_df = pd.read_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive\test\output_test.csv')
+target_col = 'Diagnosis'
 
-print("Verificando NaNs no input_train_df:")
-print(input_train_df.isnull().sum())
-print("\nVerificando NaNs no input_test_df:")
-print(input_test_df.isnull().sum())
+if target_col not in db.columns:
+    raise ValueError(f"Coluna alvo '{target_col}' não encontrada no dataset!")
 
-input_train_numeric = pd.get_dummies(input_train_df, drop_first=True)
-input_test_numeric = pd.get_dummies(input_test_df, drop_first=True)
+y = db[[target_col]].copy()
+x = db.drop(columns=[target_col, 'PatientID', 'DoctorInCharge'], errors='ignore')
 
-train_cols = input_train_numeric.columns
-input_test_aligned = input_test_numeric.reindex(columns=train_cols, fill_value=0)
+print("\nVerificando valores nulos no dataset:")
+print(db.isna().sum())
 
-output_train_numeric = output_train_df['Age'].map({'Yes': 1, 'No': 0})
-output_test_numeric = output_test_df['Age'].map({'Yes': 1, 'No': 0})
+input_train_df, input_test_df, output_train_df, output_test_df = train_test_split(
+    x, y, test_size=0.2, random_state=42
+)
 
-scaler = StandardScaler() 
+scaler = StandardScaler()
+input_train_scaled = scaler.fit_transform(input_train_df)
+input_test_scaled = scaler.transform(input_test_df)
 
-input_train_scaled = scaler.fit_transform(input_train_numeric)
-input_test_scaled = scaler.transform(input_test_aligned)
+input_train_scaled = pd.DataFrame(input_train_scaled, columns=input_train_df.columns)
+input_test_scaled = pd.DataFrame(input_test_scaled, columns=input_test_df.columns)
 
-output_path = r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\archive'
-pd.DataFrame(input_train_scaled, columns=train_cols).to_csv(f'{output_path}/train/input_train_scaled.csv', index=False)
-pd.DataFrame(input_test_scaled, columns=train_cols).to_csv(f'{output_path}/test/input_test_scaled.csv', index=False)
+print("\n===== Verificando NaNs no input_train_df =====")
+print(input_train_df.isna().sum())
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Input(shape=(input_train_scaled.shape[1],)),
-    tf.keras.layers.Dense(512, activation='relu'),
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(256, activation='relu'),
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(1, activation='sigmoid', name='output_layer')
+print("\n===== Verificando NaNs no input_test_df =====")
+print(input_test_df.isna().sum())
+
+print("\n===== Valores únicos na coluna Diagnosis =====")
+print(output_train_df['Diagnosis'].unique())
+
+if pd.api.types.is_numeric_dtype(output_train_df['Diagnosis']):
+    output_train_numeric = output_train_df['Diagnosis'].astype(int)
+    output_test_numeric = output_test_df['Diagnosis'].astype(int)
+else:
+    output_train_numeric = output_train_df['Diagnosis'].map({'Alzheimer': 1, 'Normal': 0})
+    output_test_numeric = output_test_df['Diagnosis'].map({'Alzheimer': 1, 'Normal': 0})
+
+print("\n===== Valores únicos em output_train_numeric (após conversão) =====")
+print(pd.Series(output_train_numeric).unique())
+
+print("\n===== Checando valores inválidos =====")
+print("NaN em input_train_scaled:", np.isnan(input_train_scaled.values).any())
+print("NaN em output_train_numeric:", output_train_numeric.isna().any())
+print("Valores únicos em output_train_numeric:", output_train_numeric.unique())
+print("Entradas finitas?", np.isfinite(input_train_scaled.values).all())
+
+output_train_numeric = output_train_numeric.fillna(0)
+output_test_numeric = output_test_numeric.fillna(0)
+
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=20,        
+    restore_best_weights=True
+)
+
+input_dim = input_train_scaled.shape[1]
+model = Sequential([
+    Dense(512, activation='relu', input_dim=input_dim),
+    Dropout(0.2),
+    Dense(256, activation='relu'),
+    Dropout(0.2),
+    Dense(128, activation='relu'),
+    Dropout(0.2),
+    Dense(64, activation='relu'),
+    Dropout(0.2),
+    Dense(1, activation='sigmoid', name='output_layer') 
 ])
 
+model.compile(optimizer=Adam(learning_rate=0.001),
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
 model.summary()
-opt = tf.keras.optimizers.Adam(learning_rate=0.0001)
-model.compile(optimizer=opt, loss='binary_crossentropy', metrics=['accuracy'])
 
-history = model.fit(input_train_scaled, output_train_numeric, epochs=100, batch_size=32, 
-                    validation_split=0.2, callbacks=[early_stopping])
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('Model Loss')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper right')
-plt.savefig(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\plot\loss_plot.png')
-plt.show()  
+history = model.fit(
+    input_train_scaled,
+    output_train_numeric,
+    validation_data=(input_test_scaled, output_test_numeric),
+    epochs=100,
+    batch_size=32,
+    verbose=1,
+    callbacks=[early_stop]
+)
 
-pd.DataFrame(history.history).to_csv(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\plot\history.csv', index=False)
+model.save('/home/bruno/detection_alzhaimer/model/alzheimer_mlp.keras')
+input_train_scaled.to_csv('/home/bruno/detection_alzhaimer/archive/train/input_train_scaled.csv', index=False)
+input_test_scaled.to_csv('/home/bruno/detection_alzhaimer/archive/test/input_test_scaled.csv', index=False)
 
-model.save(r'C:\Users\jessi\OneDrive\Área de Trabalho\detection_alzhaimer\plot\model.h5')
+print("\nTreinamento concluído e arquivos salvos com sucesso!")
