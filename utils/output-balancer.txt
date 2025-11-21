@@ -1,0 +1,4 @@
+Diagnosis
+0            1111
+1            1111
+Name: count, dtype: int64
