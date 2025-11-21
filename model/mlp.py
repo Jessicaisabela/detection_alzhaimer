@@ -8,7 +8,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 
 print("Carregando dataset...")
-db = pd.read_csv('/home/bruno/detection_alzhaimer/archive/alzheimers_disease_data.csv')
+db = pd.read_csv('./archive/alzheimers_disease_data.csv')
 
 print("\nColunas do dataset:")
 print(db.columns)
@@ -98,8 +98,8 @@ history = model.fit(
     callbacks=[early_stop]
 )
 
-model.save('/home/bruno/detection_alzhaimer/model/alzheimer_mlp.keras')
-input_train_scaled.to_csv('/home/bruno/detection_alzhaimer/archive/train/input_train_scaled.csv', index=False)
-input_test_scaled.to_csv('/home/bruno/detection_alzhaimer/archive/test/input_test_scaled.csv', index=False)
+model.save('./model/alzheimer_mlp.keras')
+input_train_scaled.to_csv('./archive/train/input_train_scaled.csv', index=False)
+input_test_scaled.to_csv('./archive/test/input_test_scaled.csv', index=False)
 
 print("\nTreinamento concluído e arquivos salvos com sucesso!")
