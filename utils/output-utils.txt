@@ -1,0 +1,12 @@
+   PatientID  Age  Gender  ...  Forgetfulness  Diagnosis  DoctorInCharge
+0       4751   73       0  ...              0          0       XXXConfid
+1       4752   89       0  ...              1          0       XXXConfid
+2       4753   73       0  ...              0          0       XXXConfid
+3       4754   74       1  ...              0          0       XXXConfid
+4       4755   89       0  ...              0          0       XXXConfid
+
+[5 rows x 35 columns]
+Diagnosis
+0    1389
+1     760
+Name: count, dtype: int64

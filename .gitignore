@@ -1,2 +1,19 @@
-/archive
-venv
+# Ignorar virtual env
+venv/
+.env/
+
+# Ignorar datasets grandes
+*.csv
+*.zip
+*.tar
+*.gz
+*.h5
+*.npy
+*.npz
+data/
+datasets/
+archive/
+
+# Ignorar arquivos temporários
+__pycache__/
+*.pyc
