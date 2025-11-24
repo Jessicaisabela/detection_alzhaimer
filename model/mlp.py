@@ -16,11 +16,19 @@ from tensorflow.keras import backend as K
 db = pd.read_csv('./archive/alzheimers_disease_data.csv')
 
 target_col = 'Diagnosis'
+cols_to_ignore = [
+    'PatientID', 'DoctorInCharge', 'Diagnosis',
+    'EducationLevel', 'Ethnicity', 'Smoking', 'Hypertension', 'Gender', 
+    'CardiovascularDisease', 'Forgetfulness', 'PersonalityChanges', 
+    'DifficultyCompletingTasks', 'Depression', 'Disorientation', 'Confusion', 
+    'FamilyHistoryAlzheimers', 'HeadInjury', 'Diabetes'
+]
+
 if target_col not in db.columns:
     raise ValueError(f"Coluna alvo '{target_col}' não encontrada!")
 
 y = db[[target_col]].copy()
-x = db.drop(columns=[target_col, 'PatientID', 'DoctorInCharge'], errors='ignore')
+x = db.drop(columns=cols_to_ignore, errors='ignore')
 
 input_train_df, input_test_df, output_train_df, output_test_df = train_test_split(
     x, y, test_size=0.2, random_state=42, stratify=y
@@ -94,7 +102,7 @@ def objective(trial):
     return history.history['val_accuracy'][-1]
 
 study = optuna.create_study(direction='maximize', pruner=optuna.pruners.MedianPruner())
-study.optimize(objective, n_trials=20)
+study.optimize(objective, n_trials=50)
 
 print(study.best_params)
 
