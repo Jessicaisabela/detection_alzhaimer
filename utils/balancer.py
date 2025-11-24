@@ -2,7 +2,6 @@ import pandas as pd
 from imblearn.over_sampling import SMOTE 
 
 input_train = pd.read_csv('./archive/train/input_train.csv')
-
 output_train = pd.read_csv('./archive/train/output_train.csv')
 
 original_columns = input_train.columns

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import optuna
+import joblib
 from optuna.integration import TFKerasPruningCallback
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -12,7 +13,6 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras import backend as K
 
-# 1. Carregar Dados
 db = pd.read_csv('./archive/alzheimers_disease_data.csv')
 
 target_col = 'Diagnosis'
@@ -22,17 +22,14 @@ if target_col not in db.columns:
 y = db[[target_col]].copy()
 x = db.drop(columns=[target_col, 'PatientID', 'DoctorInCharge'], errors='ignore')
 
-# 2. Split (Mantendo a proporção original com stratify)
 input_train_df, input_test_df, output_train_df, output_test_df = train_test_split(
     x, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# 3. Escalonamento
 scaler = StandardScaler()
 input_train_scaled = scaler.fit_transform(input_train_df)
 input_test_scaled = scaler.transform(input_test_df)
 
-# 4. Preparar Target Numérico
 if pd.api.types.is_numeric_dtype(output_train_df['Diagnosis']):
     output_train_numeric = output_train_df['Diagnosis'].astype(int)
     output_test_numeric = output_test_df['Diagnosis'].astype(int)
@@ -45,14 +42,12 @@ output_test_numeric = output_test_numeric.fillna(0)
 
 input_dim = input_train_scaled.shape[1]
 
-# 5. CALCULAR PESOS (O segredo do sucesso anterior)
 class_weights_vals = class_weight.compute_class_weight(
     class_weight='balanced',
     classes=np.unique(output_train_numeric),
     y=output_train_numeric
 )
 class_weights_dict = dict(enumerate(class_weights_vals))
-print(f"Pesos calculados: {class_weights_dict}")
 
 def objective(trial):
     K.clear_session()
@@ -62,9 +57,7 @@ def objective(trial):
     units_first = trial.suggest_int('units_first', 64, 512)
     activation = trial.suggest_categorical('activation', ['relu', 'elu'])
     dropout_rate = trial.suggest_float('dropout_rate', 0.1, 0.5)
-    
-    # Regularização L2 mantida (ajuda a generalizar)
-    l2_rate = 0.001 
+    l2_rate = 0.001
     
     model.add(Dense(units_first, activation=activation, input_dim=input_dim, kernel_regularizer=l2(l2_rate)))
     model.add(Dropout(dropout_rate))
@@ -87,7 +80,6 @@ def objective(trial):
         TFKerasPruningCallback(trial, 'val_accuracy')
     ]
 
-    # Aqui usamos o class_weight no lugar do SMOTE
     history = model.fit(
         input_train_scaled,
         output_train_numeric,
@@ -95,19 +87,17 @@ def objective(trial):
         epochs=50,
         batch_size=trial.suggest_categorical('batch_size', [16, 32, 64]),
         callbacks=callbacks,
-        class_weight=class_weights_dict, 
+        class_weight=class_weights_dict,
         verbose=0
     )
 
     return history.history['val_accuracy'][-1]
 
-# Otimização
 study = optuna.create_study(direction='maximize', pruner=optuna.pruners.MedianPruner())
 study.optimize(objective, n_trials=20)
 
 print(study.best_params)
 
-# Treino Final
 best_params = study.best_params
 final_model = Sequential()
 l2_rate = 0.001
@@ -141,5 +131,7 @@ final_history = final_model.fit(
 )
 
 final_model.save('./model/alzheimer_mlp_optimized.keras')
+joblib.dump(scaler, './model/scaler.pkl')
+
 pd.DataFrame(input_test_scaled, columns=input_test_df.columns).to_csv('./archive/test/input_test_scaled.csv', index=False)
 output_test_numeric.to_csv('./archive/test/output_test.csv', index=False)
